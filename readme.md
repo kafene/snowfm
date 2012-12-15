@@ -1,16 +1,19 @@
-# DSFM - Deadly Simple File Manager for PHP
+SnowFM - A Pure File Manager for PHP
+=========================================
 
 Nice user interface for managing files on server.
-Just copy one file to server and it's ready to go.
+Just copy one file and it's ready to go.
 
-![screenshot](http://dl.dropbox.com/u/12955478/img/dsfm.png)
+![screenshot](http://dl.dropbox.com/u/12955478/img/snowfm.png)
 
-# Done
+Done
+----
 
 - browse folders
 - download files
 
-# Todo
+Todo
+----
 
 - login
 - edit text files

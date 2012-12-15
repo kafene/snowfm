@@ -1,9 +1,20 @@
 <?php
 
-class Tpl{
+/**
+ * Snow File Manager
+ * http://github.com/unu/snowfm
+ */
+
+class SnowFM{
+  var $baseDir, $tpl;
+
+  function __construct($baseDir){
+    $this->baseDir = $baseDir;
+    $this->tpl = new StdClass();
+  }
 
   function render($_tpl){
-    extract((array) $this);
+    extract((array) $this->tpl);
     ob_start();
     eval('?>' . preg_replace(array(
         '_{\@([^}]+)}_',
@@ -28,15 +39,6 @@ class Tpl{
         "?>\n"
       ), $_tpl));
     return ob_get_clean();
-  }
-}
-
-class Dsfm{
-  var $baseDir, $tpl;
-
-  function __construct($baseDir){
-    $this->baseDir = $baseDir;
-    $this->tpl = new Tpl();
   }
 
   function listFiles($dir = null){
@@ -86,7 +88,7 @@ class Dsfm{
     return $parts;
   }
 
-  function render(){
+  function run(){
     $get = (object) $_GET;
     $path = null;
     if (isset($get->open)){
@@ -113,12 +115,12 @@ class Dsfm{
       else
         $tpl->upDirTop = true;
     }
-    else{ 
+    else{
       $tpl->name = basename($this->baseDir);
     }
-    $tpl->basePath = './';
-    $tpl->linkOpen = './?open=';
-    echo $tpl->render($this->viewListing());
+    $tpl->basePath = './' . basename(__FILE__);
+    $tpl->linkOpen = $tpl->basePath . '?open=';
+    echo $this->render($this->viewListing());
   }
 
   function viewListing(){
@@ -222,5 +224,5 @@ class Dsfm{
 
 }
 
-$dsfm = new Dsfm(__DIR__);
-$dsfm->render();
+$fm = new SnowFM(__DIR__);
+$fm->run();
