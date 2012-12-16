@@ -11,6 +11,7 @@ Done
 
 - browse folders
 - download files
+- download folders as .zip
 
 Todo
 ----
@@ -20,4 +21,3 @@ Todo
 - new file, folder
 - rename, move, copy, delete
 - markdown preview in editor
-- download folders as .zip

@@ -88,9 +88,47 @@ class SnowFM{
     return $parts;
   }
 
+  function downloadDir($path){
+    $tmp = tempnam(sys_get_temp_dir(), 'dir');
+    self::zipDir($tmp, $this->baseDir . '/' . $path);
+    $name = $path ? $path : $this->baseDir;
+    $name = basename(realpath($name)) . '.zip';
+    $name = preg_replace(';[^a-zA-Z0-9_\-\.];', '_', $name);
+    header("Content-Type: application/zip");
+    header("Accept-Ranges: bytes");
+    header("Content-Length: " . filesize($tmp));
+    header("Content-Disposition: attachment; filename=" . $name);
+    readfile($tmp);
+    unlink($tmp);
+    exit();
+  }
+
+  static function zipDir($zipFile, $directory){
+    $zip = new ZipArchive();
+    $zip->open($zipFile, ZipArchive::CREATE);
+    $base = dirname(realpath($directory)) . '/';
+    $it = new RecursiveDirectoryIterator(realpath($directory));
+    $it = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::SELF_FIRST);
+    foreach ($it as $node => $info){
+      if ($info->isDir()){
+        if (!in_array(basename($node), array('.', '..')))
+          $zip->addEmptyDir(str_replace($base, '', $node));
+      }
+      elseif ($info->isFile())
+        $zip->addFile($node, str_replace($base, '', $node));
+    }
+    $zip->close();
+  }
+
   function run(){
     $get = (object) $_GET;
     $path = null;
+    if (isset($get->dl)){
+      $path = preg_replace(';/\.\./;', '', '/' . trim($get->dl, '/') . '/');
+      $path = trim($path, '/');
+      $path = $path ? $path : '.';
+      return $this->downloadDir($path);
+    }
     if (isset($get->open)){
       $path = preg_replace(';/\.\./;', '', '/' . trim($get->open, '/') . '/');
       $path = trim($path, '/');
@@ -120,6 +158,8 @@ class SnowFM{
     }
     $tpl->basePath = './' . basename(__FILE__);
     $tpl->linkOpen = $tpl->basePath . '?open=';
+    $tpl->linkDl = $tpl->basePath . '?dl=';
+    $tpl->dirLink = urlencode($path);
     echo $this->render($this->viewListing());
   }
 
@@ -192,10 +232,21 @@ class SnowFM{
     .archive{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABH0lEQVRIx+3Vvy4EURQG8N+uTdBRSUioPAAbpYhCoSOi9gQST6DRqUQnCr3KAygkShKdRoJyCyEoFovVnGKymZ3Z2aWR/ZJTzNzvnu/8ufdc+shBKWNtHMto5Pio4Ay3RcUv0ezQbrLU07CNKs5xiK+MCmxgCXvY6iTyaTzjBfMd8GfxhFfM5JEHcBRpHxQo527sOc6oCpgL4kMXB+Yu9i5mke6DtNCFQDURXCmtyTuYwjUmsF5QoIKr6MM+NlsJpxFBA3W8hdXxgc8WS+M1wsdFWgbNxL/WRp1E6uX4/sYI1tpc1mbePUjiHatt1h4xmle3PAyiFlEnUY4s9CoAY90Ou/JfT9P/JTD0i36H0x6cFUwmz3APj1gtBl8f+fgBWd5IZa8hlWAAAAAASUVORK5CYII=");
     }
+    .down{
+      width: 24px;
+      height: 24px;
+      display: inline-block;
+      text-indent: -20em;
+      overflow: hidden;
+      background: transparent url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABGUlEQVRIx+3VMUrEQBTG8Z+ui6DCaidWFmKlroKFVmItlt7CxhvYWnkUT+ANBEEstPIAbmEUBHHd2EwgDNkkmxSi+GBImDff939J5mX47TFVY80FdjEq0D7gtG0R10jHjJsq8XQNwKhhrjagVfwDfh4wM2Z+Ez28YbFEv4B+uL7jti54Gc8B8FnSB0O8IsHqpE+3FiBp2O+xeTb3go2mr3APgwJIdp/goO13WsdHzjgP6jcx7GIWnQgyyBknkXknaLpV5nPh73mFkyi3HyAJDqPcUdBcYr4M0AtbLcV5QX47gOI4C5pHLFX1QRqdFfk1dwVzw1zDjuo2GhxjpWJNBtiapJOzynfCaHVCxoAv3Ieq0gbmT0H7h+IbSwdO8YiGcawAAAAASUVORK5CYII=") no-repeat;
+    }
+    .down:hover{
+      background-color: #ccc;
+    }
   </style>
 </head>
 <body>
-  <h1>{name}</h1>
+  <h1><a class="down" href="{linkDl}{dirLink}">down</a> {name}</h1>
   <div class="parts">
     {@parts}
       {!partIsLast}
