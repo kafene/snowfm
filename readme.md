@@ -11,7 +11,7 @@ Done
 
 - browse folders
 - download files
-- download folders as .zip
+- download folders as .tar.gz (send as stream)
 
 Todo
 ----

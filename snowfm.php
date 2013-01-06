@@ -89,6 +89,7 @@ class SnowFM{
   }
 
   function downloadDir($path){
+    ini_set('max_execution_time', 300);
     $tmp = tempnam(sys_get_temp_dir(), 'dir');
     self::zipDir($tmp, $this->baseDir . '/' . $path);
     $name = $path ? $path : $this->baseDir;
@@ -100,6 +101,25 @@ class SnowFM{
     header("Content-Disposition: attachment; filename=" . $name);
     readfile($tmp);
     unlink($tmp);
+    exit();
+  }
+  function downloadDirStream($path){
+    $name = $path ? $path : $this->baseDir;
+    $name = basename(realpath($name)) . '.tar.gz';
+    $name = preg_replace(';[^a-zA-Z0-9_\-\.];', '_', $name);
+    header('Content-Type: application/x-gzip');
+    #header('Content-Type: application/octet-stream');
+    header('Content-disposition: attachment; filename="' . $name . '"');
+    chdir(dirname($this->baseDir . '/' . $path));
+    $fp = popen('tar cf - ' . basename($path) . ' | gzip -c', 'r');
+    #$fp = popen('zip -r - ' . $this->baseDir . '/' . $path, 'r');
+    $bufsize = 8192;
+    $buff = '';
+    while( !feof($fp) ) {
+       $buff = fread($fp, $bufsize);
+       echo $buff;
+    }
+    pclose($fp);
     exit();
   }
 
@@ -126,8 +146,10 @@ class SnowFM{
     if (isset($get->dl)){
       $path = preg_replace(';/\.\./;', '', '/' . trim($get->dl, '/') . '/');
       $path = trim($path, '/');
-      $path = $path ? $path : '.';
-      return $this->downloadDir($path);
+      if (PHP_OS == 'Linux')
+        return $this->downloadDirStream($path);
+      else
+        return $this->downloadDir($path);
     }
     if (isset($get->open)){
       $path = preg_replace(';/\.\./;', '', '/' . trim($get->open, '/') . '/');
@@ -142,7 +164,7 @@ class SnowFM{
   function renderListing($path){
     $path = preg_replace(';/\.\./;', '', '/' . trim($path, '/') . '/');
     $path = trim($path, '/');
-    $tpl = &$this->tpl;
+    $tpl = $this->tpl;
     $tpl->title = 'hello';
     $tpl->files = $this->listFiles($path);
     $tpl->parts = $this->listParts($path);
@@ -169,7 +191,7 @@ class SnowFM{
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Directory: {name}/</title>
+  <title>{name}/</title>
   <link rel="icon" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAACZUlEQVRYw+2XPWhUQRDHf2r8QM8iEISTpIigKCoWxlJtFNJokRRqEbGTpFBUQvCKYCXpBAu1UUNArhFMxCMcxE8QJCBiiGgRYtQkiAHFFIoa72xmYRh39727HIiQgeXt2/nPzuzMvJl9sET/mJZVIXMUOAjsBDbIHnPAOHAfyAMLtTZ0PXADKMsoqblvLQ801Er5yYASN58B3pl1x+terPJbRtlr4CLwTNx+weBPeQwsLFa5HnXAYYNbCbwBvok3fOEZrtbtJUmoc0CTB7dNvJADpj2K9chVknA6lvUBXAvQA4wAzxOUu5FNY4DO9vYIbh3wUXCf5HkVOBv5SobSGODAryKYjOBOyHsbcAl4BMwDvyJeyCQVGQc8EsFtAh4DY8B7YA2wQni7RP5z4NPsihlwXQFDtB14a9z8A5iS+azyQBfQaTx7J2bAqNrUl/WrIpVQj8tqfl5kX8r7RMyAKSXY6eE3pcj0khzkpvQHRwXhz+sNlweaUxm44kmYzSkb3B7ggHyiOrn/aoDWgDkDOmP4D+SEeDa21AhsUe8bjQ4v9av4umerwWSBXuCaVLcPgTD8NB3Rrd+NGdARaLFbIzK9gVw4pjD71PrpmAF1no0WJPtDtFowVk4bXVSHqU9KorwnDEk06vHaDuHtVuvFNKW4wWzUkULmt6kNh5RHvypec9qO2K2MmAXWJuB7lPLbSvmkUt5X6Z2goIz4DuxPwD9UVa/FnPxptbeiYROOJ3IjDtFeiXO5Fsod5TwdrSy1/Z6MF4HO10eNKAsMVnAtL6ZNuEp/TDLA8YQfkwHgy9I/339DfwD0LTbc4nvjqQAAAABJRU5ErkJggg==">
   <style>
     body{
