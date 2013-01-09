@@ -103,16 +103,21 @@ class SnowFM{
     unlink($tmp);
     exit();
   }
-  function downloadDirStream($path){
-    $name = $path ? $path : $this->baseDir;
-    $name = basename(realpath($name)) . '.tar.gz';
-    $name = preg_replace(';[^a-zA-Z0-9_\-\.];', '_', $name);
-    header('Content-Type: application/x-gzip');
-    #header('Content-Type: application/octet-stream');
-    header('Content-disposition: attachment; filename="' . $name . '"');
+  function downloadDirStream($path, $compress = true){
     chdir(dirname($this->baseDir . '/' . $path));
-    $fp = popen('tar cf - ' . basename($path) . ' | gzip -c', 'r');
-    #$fp = popen('zip -r - ' . $this->baseDir . '/' . $path, 'r');
+    $name = basename($path ? $path : $this->baseDir);
+    $name = preg_replace(';[^a-zA-Z0-9_\-\.];', '_', $name);
+    if ($compress){
+      header('Content-Type: application/x-gzip');
+      $fp = popen('tar cf - ' . basename($path) . ' | gzip -c', 'r');
+      $name .= '.tar.gz';
+    }
+    else{
+      header('Content-Type: application/x-tar');
+      $fp = popen('tar cf - ' . basename($path), 'r');
+      $name .= '.tar';
+    }
+    header('Content-disposition: attachment; filename="' . $name . '"');
     $bufsize = 8192;
     $buff = '';
     while( !feof($fp) ) {
@@ -170,10 +175,6 @@ class SnowFM{
     $tpl->parts = $this->listParts($path);
     if (!empty($path)){
       $tpl->name = basename($path);
-      if (strstr($path, '/'))
-        $tpl->upDir = urlencode(preg_replace(';/?[^/]*$;', null, $path));
-      else
-        $tpl->upDirTop = true;
     }
     else{
       $tpl->name = basename($this->baseDir);
@@ -224,12 +225,12 @@ class SnowFM{
       list-style: none;
     }
     .parts{
-      padding: .5em;
-      font-size: 80%;
-      color: #888;
+      padding: .8em;
+      font-size: 90%;
+      color: #555;
     }
     .parts a{
-      color: #aaa;
+      color: #888;
       text-decoration: underline;
     }
     .parts a:hover{
@@ -245,14 +246,16 @@ class SnowFM{
     .folder{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAA7ElEQVRIx+3VPUrFQBSG4cdrvIVY2oiNhaWVdxmuwVUoYuFK1A3oFkQEa4sLtoKthY2I/5jYTCQMcydiIljkhQPzA/Od72TmhIEW5hrjIprXfKL8rUDRGO9iA1WUwDN28NjVzXk4PBVXWOrqoMQH9nARsl/EESaY4hhPPyj7HU7jjTO8YitaX8ZJxl0qrlMOauaj+T22sY91jGdkXmETB3jJCaR4x22IHG/h1n0z6vnaj1oX/LXiIPAvBMoO55W5VlE/8xWszeisOSqsxkkXkZsxDvusTFPgEg8dS1RX4Sb1w1no8aNXob0MtPMFHtA2/YGTg9sAAAAASUVORK5CYII=");
     }
-    .up{
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAA0klEQVRIx+3UsU4CQRSF4U/A2BlKCuIj+ABQakLLW/ledCR0xtZWGxKkEIzA2FySyWZ3Y1y2QW5yi8nM/OfMyczw3+oR07bgY3ziCw9twN+RopenFBljE+BDdIqTTE4Fz8EpE2sUVx5LEZ6axlWMpQr+p7hG2JZA6gQSvstO0i2MB3gK92+4xU2Nmau4us+x/h4zrKs29NAP8BCLGvfHfsFd7OnjugjMa4dVNt7/ItJ9OC513Wn7b7kIXATaF+g0ZfRq5naY4yNebNVX8Rprz7R+AABIV+ylmrbuAAAAAElFTkSuQmCC");
-    }
     .image{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABOElEQVRIx+3VTysFYRQG8N+9uLJQFte/T2HD7pYkayk7ZWdtYaeUtY2UDeUD2NiRKDZWim+hxGVB8icam3Nrmq4xLsXCU6d3Ou95n2fOnPec4R+/jVLquYb+H+K9xXHWuYfnsJcW7RlPOGmQtqcEOsLOcBnZJU0y/QgJejGCSrOAw1Cf+ManqeEBpw1HuUlQV6zdOMA1hgsKdGUd5ZzggcimioXMXhWdRRTzBC6xg3OsZ85sYqWIQHvO3j1momD36MMVpjEVMQfYbTUDUfQ7zOECY9hO3Zot9HxHQJBvRLZHKXLRmMt51/gzgUmsZkiTIGyQzmOolRpUsYQb1HPi2rCG0aICT7HWv3D/G3j8TKCCRcwWHA/ZUTGY7Y+0wCveot1LLY6KJOy12bgejzf4CdSx//83/Bt4BxnYRbmW1i0hAAAAAElFTkSuQmCC");
     }
     .archive{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABH0lEQVRIx+3Vvy4EURQG8N+uTdBRSUioPAAbpYhCoSOi9gQST6DRqUQnCr3KAygkShKdRoJyCyEoFovVnGKymZ3Z2aWR/ZJTzNzvnu/8ufdc+shBKWNtHMto5Pio4Ay3RcUv0ezQbrLU07CNKs5xiK+MCmxgCXvY6iTyaTzjBfMd8GfxhFfM5JEHcBRpHxQo527sOc6oCpgL4kMXB+Yu9i5mke6DtNCFQDURXCmtyTuYwjUmsF5QoIKr6MM+NlsJpxFBA3W8hdXxgc8WS+M1wsdFWgbNxL/WRp1E6uX4/sYI1tpc1mbePUjiHatt1h4xmle3PAyiFlEnUY4s9CoAY90Ou/JfT9P/JTD0i36H0x6cFUwmz3APj1gtBl8f+fgBWd5IZa8hlWAAAAAASUVORK5CYII=");
+    }
+    .empty{
+      color: #aaa;
+      background: transparent url();
+      margin: .5em 40px;
     }
     .down{
       width: 24px;
@@ -280,14 +283,11 @@ class SnowFM{
     {/parts}
   </div>
   <ul>
-    {?upDir}
-      <li class="up"><a href="{linkOpen}{upDir}">..</a></li>
-    {/upDir}
-    {?upDirTop}
-      <li class="up"><a href="{basePath}">..</a></li>
-    {/upDirTop}
     {@files}
       <li class="{fileType}"><a href="{linkOpen}{fileLink}">{fileName}</a></li>
+    {/files}
+    {!files}
+      <li class="empty">(empty directory)</li>
     {/files}
   </ul>
 </body>
