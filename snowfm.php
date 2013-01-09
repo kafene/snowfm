@@ -41,6 +41,12 @@ class SnowFM{
     return ob_get_clean();
   }
 
+  static function formatSize($size) {
+    $units = array(' B', ' KB', ' MB', ' GB', ' TB');
+    for ($i = 0; $size >= 1024 && $i < 4; $i++) $size /= 1024;
+    return round($size, 1).$units[$i];
+  }
+
   function listFiles($dir = null){
     $files = array();
     foreach (scandir($this->baseDir . '/' . $dir) as $fileName){
@@ -61,6 +67,7 @@ class SnowFM{
         'isFile' => is_file($filePath),
         'isDir' => is_dir($filePath),
         'fileType' => $fileType,
+        'fileSize' => is_file($filePath) ? self::formatSize(filesize($filePath)) : null,
       );
     }
     $dirs = $files2 = array();
@@ -88,6 +95,23 @@ class SnowFM{
     return $parts;
   }
 
+  static function zipDir($zipFile, $directory){
+    $zip = new ZipArchive();
+    $zip->open($zipFile, ZipArchive::CREATE);
+    $base = dirname(realpath($directory)) . '/';
+    $it = new RecursiveDirectoryIterator(realpath($directory));
+    $it = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::SELF_FIRST);
+    foreach ($it as $node => $info){
+      if ($info->isDir()){
+        if (!in_array(basename($node), array('.', '..')))
+          $zip->addEmptyDir(str_replace($base, '', $node));
+      }
+      elseif ($info->isFile())
+        $zip->addFile($node, str_replace($base, '', $node));
+    }
+    $zip->close();
+  }
+
   function downloadDir($path){
     ini_set('max_execution_time', 300);
     $tmp = tempnam(sys_get_temp_dir(), 'dir');
@@ -103,6 +127,7 @@ class SnowFM{
     unlink($tmp);
     exit();
   }
+
   function downloadDirStream($path, $compress = true){
     chdir(dirname($this->baseDir . '/' . $path));
     $name = basename($path ? $path : $this->baseDir);
@@ -120,29 +145,12 @@ class SnowFM{
     header('Content-disposition: attachment; filename="' . $name . '"');
     $bufsize = 8192;
     $buff = '';
-    while( !feof($fp) ) {
-       $buff = fread($fp, $bufsize);
-       echo $buff;
+    while(!feof($fp) ) {
+      $buff = fread($fp, $bufsize);
+      echo $buff;
     }
     pclose($fp);
     exit();
-  }
-
-  static function zipDir($zipFile, $directory){
-    $zip = new ZipArchive();
-    $zip->open($zipFile, ZipArchive::CREATE);
-    $base = dirname(realpath($directory)) . '/';
-    $it = new RecursiveDirectoryIterator(realpath($directory));
-    $it = new RecursiveIteratorIterator($it, RecursiveIteratorIterator::SELF_FIRST);
-    foreach ($it as $node => $info){
-      if ($info->isDir()){
-        if (!in_array(basename($node), array('.', '..')))
-          $zip->addEmptyDir(str_replace($base, '', $node));
-      }
-      elseif ($info->isFile())
-        $zip->addFile($node, str_replace($base, '', $node));
-    }
-    $zip->close();
   }
 
   function run(){
@@ -197,7 +205,8 @@ class SnowFM{
   <style>
     body{
       margin: 2em auto;
-      max-width: 40em;
+      max-width: 45em;
+      min-width: 10em;
       font-size: 12pt;
       font-family: "Droid Sans", "Arial", sans-serif;
     }
@@ -212,17 +221,28 @@ class SnowFM{
     h1{
       margin: 0;
     }
-    li a{
-      display: block;
-      padding: .5em .5em;
-      margin-left: 40px;
-    }
     ul{
       margin: 0;
       padding: 0;
     }
     li{
       list-style: none;
+      background: transparent url() 10px center no-repeat;
+      overflow: visible;
+      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABNklEQVRIx93VPy8EYRDH8c+dk4v4FxIKpUKjoNSpKFVCo9J5AXqFzjuQSGgkOr1GtHpa9bkIOcK54zTPJZt1u7e3dw2/ZLPZnXnm+8w8k2f46yrEvkdwiCW0uqwt4QynvQDHcBOCf6Q89eDTxHa3XcT1Hd5bIUg8yxbmcIRxnIT/F1kzuM5QnnlUw2bamex2ciz2eXaFSJxjbA4KUMREDDiE/VC21DPIogcsRDZYQ6VTZ+YFNAKkq0oZ7KsoJ9jroa0beQGTOMdsgr2CxdBRuQDPWE/xawaf3CUqYyfeGRHVcBBAuQDDWMZ0gv0p+OTO4AUbHa6L6LXx3g9gCreYSbBXsYLHvIBX7KW06WfIMncGDVz1M3DSAGsJ13UnvfUCaAe8HMCE/AX4wj1GI4Onl+B3IcY/0g+qNkDNR3620wAAAABJRU5ErkJggg==");
+    }
+    li a{
+      display: block;
+      padding: .5em .5em;
+      margin-left: 40px;
+    }
+    li a .size{
+      float: right;
+      color: #aaa;
+      font-size: 85%;
+    }
+    li a:hover .size{
+      color: white;
     }
     .parts{
       padding: .8em;
@@ -238,11 +258,6 @@ class SnowFM{
       background-color: transparent;
       color: #444;
     }
-    li{
-      background: transparent url() 10px center no-repeat;
-      overflow: visible;
-      background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABNklEQVRIx93VPy8EYRDH8c+dk4v4FxIKpUKjoNSpKFVCo9J5AXqFzjuQSGgkOr1GtHpa9bkIOcK54zTPJZt1u7e3dw2/ZLPZnXnm+8w8k2f46yrEvkdwiCW0uqwt4QynvQDHcBOCf6Q89eDTxHa3XcT1Hd5bIUg8yxbmcIRxnIT/F1kzuM5QnnlUw2bamex2ciz2eXaFSJxjbA4KUMREDDiE/VC21DPIogcsRDZYQ6VTZ+YFNAKkq0oZ7KsoJ9jroa0beQGTOMdsgr2CxdBRuQDPWE/xawaf3CUqYyfeGRHVcBBAuQDDWMZ0gv0p+OTO4AUbHa6L6LXx3g9gCreYSbBXsYLHvIBX7KW06WfIMncGDVz1M3DSAGsJ13UnvfUCaAe8HMCE/AX4wj1GI4Onl+B3IcY/0g+qNkDNR3620wAAAABJRU5ErkJggg==");
-    }
     .folder{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAAA7ElEQVRIx+3VPUrFQBSG4cdrvIVY2oiNhaWVdxmuwVUoYuFK1A3oFkQEa4sLtoKthY2I/5jYTCQMcydiIljkhQPzA/Od72TmhIEW5hrjIprXfKL8rUDRGO9iA1WUwDN28NjVzXk4PBVXWOrqoMQH9nARsl/EESaY4hhPPyj7HU7jjTO8YitaX8ZJxl0qrlMOauaj+T22sY91jGdkXmETB3jJCaR4x22IHG/h1n0z6vnaj1oX/LXiIPAvBMoO55W5VlE/8xWszeisOSqsxkkXkZsxDvusTFPgEg8dS1RX4Sb1w1no8aNXob0MtPMFHtA2/YGTg9sAAAAASUVORK5CYII=");
     }
@@ -253,9 +268,10 @@ class SnowFM{
       background-image: url("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABgAAAAYCAYAAADgdz34AAABH0lEQVRIx+3Vvy4EURQG8N+uTdBRSUioPAAbpYhCoSOi9gQST6DRqUQnCr3KAygkShKdRoJyCyEoFovVnGKymZ3Z2aWR/ZJTzNzvnu/8ufdc+shBKWNtHMto5Pio4Ay3RcUv0ezQbrLU07CNKs5xiK+MCmxgCXvY6iTyaTzjBfMd8GfxhFfM5JEHcBRpHxQo527sOc6oCpgL4kMXB+Yu9i5mke6DtNCFQDURXCmtyTuYwjUmsF5QoIKr6MM+NlsJpxFBA3W8hdXxgc8WS+M1wsdFWgbNxL/WRp1E6uX4/sYI1tpc1mbePUjiHatt1h4xmle3PAyiFlEnUY4s9CoAY90Ou/JfT9P/JTD0i36H0x6cFUwmz3APj1gtBl8f+fgBWd5IZa8hlWAAAAAASUVORK5CYII=");
     }
     .empty{
-      color: #aaa;
-      background: transparent url();
       margin: .5em 40px;
+      background: transparent url();
+      color: #aaa;
+      font-size: 90%;
     }
     .down{
       width: 24px;
@@ -284,7 +300,7 @@ class SnowFM{
   </div>
   <ul>
     {@files}
-      <li class="{fileType}"><a href="{linkOpen}{fileLink}">{fileName}</a></li>
+      <li class="{fileType}"><a href="{linkOpen}{fileLink}"><span class="size">{fileSize}</span>{fileName}</a></li>
     {/files}
     {!files}
       <li class="empty">(empty directory)</li>
